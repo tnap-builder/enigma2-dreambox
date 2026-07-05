@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from enigma import eAVControl, getDesktop
+from enigma import eAVControl, eAVSwitch, getDesktop
 from Components.config import config, ConfigSlider, ConfigSelection, ConfigSubDict, ConfigInteger, ConfigYesNo, ConfigEnableDisable, ConfigOnOff, ConfigSubsection, ConfigSelectionNumber, ConfigBoolean, ConfigNothing, NoSave
 from Components.SystemInfo import BoxInfo, getChipSetString
 from Components.Console import Console
@@ -45,7 +45,7 @@ class VideoHardware:
 	rates["NTSC"] = {"60Hz": {60: "ntsc"}}
 	rates["Multi"] = {"multi": {50: "pal", 60: "ntsc"}}
 
-	if BoxInfo.getItem("AmlogicFamily"):
+	if BoxInfo.getItem("AmlogicFamily") and model not in ("dreamone", "dreamtwo"):  # Generic Amlogic naming ("720p60hz"). Dream Property's adapted meson64 kernel uses Dreambox naming ("720p", "720p50") and is handled in the else branch.
 		rates["480i"] = {"60Hz": {60: "480i60hz"}}
 		rates["576i"] = {"50Hz": {50: "576i50hz"}}
 		rates["480p"] = {"60Hz": {60: "480p60hz"}}
@@ -70,6 +70,8 @@ class VideoHardware:
 		else:
 			rates["2160p"] = {"50Hz": {50: "2160p50"}, "60Hz": {60: "2160p"}, "multi": {50: "2160p50", 60: "2160p"}, "auto": {50: "2160p50", 60: "2160p", 24: "2160p24"}}
 		rates["2160p30"] = {"25Hz": {50: "2160p25"}, "30Hz": {60: "2160p30"}, "multi": {50: "2160p25", 60: "2160p30"}, "auto": {50: "2160p25", 60: "2160p30", 24: "2160p24"}}
+		if model in ("dreamone", "dreamtwo"):  # Dream's Amlogic kernel also exposes SMPTE modes, with Dreambox naming.
+			rates["smpte"] = {"24Hz": {24: "smpte24"}, "25Hz": {25: "smpte25"}, "30Hz": {30: "smpte30"}, "50Hz": {50: "smpte50"}, "60Hz": {60: "smpte60"}, "multi": {50: "smpte50", 60: "smpte60"}, "auto": {50: "smpte50", 60: "smpte60", 24: "smpte24"}}
 
 	rates["PC"] = {
 		"1024x768": {60: "1024x768"},
@@ -375,6 +377,13 @@ class VideoHardware:
 		if mode_60 is None or force == 50:
 			mode_60 = mode_50
 
+		if mode_50 is None:  # Single-rate selections (e.g. 24Hz/25Hz/30Hz) have neither a 50 nor a 60 entry; fall back to the selected mode so no None reaches the C++ side.
+			mode_50 = selectedMode
+		if mode_59 is None:
+			mode_59 = selectedMode
+		if mode_60 is None:
+			mode_60 = selectedMode
+
 		if mode_23 is None or force:
 			mode_23 = mode_60
 			if force == 50:
@@ -396,15 +405,19 @@ class VideoHardware:
 			if force == 50:
 				mode_30 = mode_50
 
-		eAVControl.getInstance().setVideoModeMulti(mode50, mode60, mode24, 1)
+		eAVControl.getInstance().setVideoModeMulti(mode_50, mode_60, mode_24, 1)
 		if eAVControl.getInstance().hasVideoAxis():
-			limits = [int(x) for x in eAVControl.getInstance().getVideoAxis(mode).split()]
-			config.osd.dst_left.setChoices(default=limits[0], first=limits[0] - 255, last=limits[0] + 255)
-			config.osd.dst_top.setChoices(default=limits[1], first=limits[1] - 255, last=limits[1] + 255)
-			config.osd.dst_width.setChoices(default=limits[2], first=limits[2] - 255, last=limits[2] + 255)
-			config.osd.dst_height.setChoices(default=limits[3], first=limits[3] - 255, last=limits[3] + 255)
-			print(f"[AVSwitch] Framebuffer mode '{getDesktop(0).size().width()}', axis '{eAVControl.getInstance().getVideoAxis(mode)}'.")
-		self.setColorFormat(config.av.colorformat.value)
+			if hasattr(config.osd, "dst_left"):  # config.osd.dst_* may not be defined yet: this module is imported (and setConfiguredMode runs) from within InitUsageConfig, before those elements are created. Later setMode calls will apply the limits.
+				limits = [int(x) for x in eAVControl.getInstance().getVideoAxis(mode).split()]
+				config.osd.dst_left.setChoices(default=limits[0], first=limits[0] - 255, last=limits[0] + 255)
+				config.osd.dst_top.setChoices(default=limits[1], first=limits[1] - 255, last=limits[1] + 255)
+				config.osd.dst_width.setChoices(default=limits[2], first=limits[2] - 255, last=limits[2] + 255)
+				config.osd.dst_height.setChoices(default=limits[3], first=limits[3] - 255, last=limits[3] + 255)
+				print(f"[AVSwitch] Framebuffer mode '{getDesktop(0).size().width()}', axis '{eAVControl.getInstance().getVideoAxis(mode)}'.")
+			else:
+				print("[VideoHardware] setMode: config.osd.dst_* not defined yet, skipping video axis limits update.")
+		# Re-assert the color format after a mode change. This class has no setColorFormat method; apply the same string-to-index mapping the Components/AVSwitch notifier uses.
+		eAVSwitch.getInstance().setColorFormat({"cvbs": 0, "rgb": 1, "svideo": 2, "yuv": 3}.get(config.av.colorformat.value, 0))
 
 		success = fileWriteLine("/proc/stb/video/videomode_50hz", mode_50, source=MODULE_NAME)
 		if success:
