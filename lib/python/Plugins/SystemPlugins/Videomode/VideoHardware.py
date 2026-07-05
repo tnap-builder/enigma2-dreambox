@@ -274,6 +274,9 @@ class VideoHardware:
 
 			# create list of available modes
 			modes = self.getModeList(port)
+			if not modes and port in self.modes:
+				print("[VideoHardware] createConfig: No modes reported for port '%s' (EDID/driver not ready), falling back to static mode list." % port)
+				modes = [(mode, list(self.rates[mode].keys())) for mode in self.modes[port] if mode in self.rates]
 			if len(modes):
 				config.av.videomode[port] = ConfigSelection(choices=[mode for (mode, rates) in modes])
 			for (mode, rates) in modes:

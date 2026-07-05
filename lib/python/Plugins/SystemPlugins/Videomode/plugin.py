@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from enigma import eAVControl
 from Screens.Screen import Screen
 from Plugins.Plugin import PluginDescriptor
 from Components.SystemInfo import BoxInfo
@@ -141,15 +142,18 @@ class VideoSetup(ConfigListScreen, Screen):
 
 	def grabLastGoodMode(self):
 		port = config.av.videoport.value
-		mode = config.av.videomode[port].value
-		rate = config.av.videorate[mode].value
+		mode = config.av.videomode[port].value if port in config.av.videomode else None
+		rate = config.av.videorate[mode].value if mode in config.av.videorate else None
 		self.last_good = (port, mode, rate)
 
 	def apply(self):
 		port = config.av.videoport.value
-		mode = config.av.videomode[port].value
-		rate = config.av.videorate[mode].value
-		if (port, mode, rate) != self.last_good:
+		mode = config.av.videomode[port].value if port in config.av.videomode else None
+		rate = config.av.videorate[mode].value if mode in config.av.videorate else None
+		if None in (mode, rate):
+			print("[Videomode] apply: No valid mode/rate configured for port '%s', saving without mode test." % port)
+			self.keySave()
+		elif (port, mode, rate) != self.last_good:
 			self.hw.setMode(port, mode, rate)
 			from Screens.MessageBox import MessageBox
 			self.session.openWithCallback(self.confirm, MessageBox, _("Is this video mode ok?"), MessageBox.TYPE_YESNO, timeout=20, default=False)
@@ -170,8 +174,11 @@ class VideomodeHotplug:
 	def hotplug(self, what):
 		print("[Videomode] hotplug detected on port '%s'" % (what))
 		port = config.av.videoport.value
-		mode = config.av.videomode[port].value
-		rate = config.av.videorate[mode].value
+		mode = config.av.videomode[port].value if port in config.av.videomode else None
+		rate = config.av.videorate[mode].value if mode in config.av.videorate else None
+		if None in (mode, rate):
+			print("[Videomode] hotplug: No valid mode/rate configured for port '%s'. Doing nothing." % port)
+			return
 
 		if not self.hw.isModeAvailable(port, mode, rate):
 			print("[Videomode] mode %s/%s/%s went away!" % (port, mode, rate))
