@@ -67,8 +67,8 @@ eDVBAudio::eDVBAudio(eDVBDemux *demux, int dev)
 	{
 		::ioctl(m_fd, AUDIO_SELECT_SOURCE, demux ? AUDIO_SOURCE_DEMUX : AUDIO_SOURCE_HDMI);
 	}
-//#else
-//	m_TsPaser = new eTsParser();
+#else
+	m_TsPaser = new eTsParser();
 #endif
 
 	if (eDVBAudio::m_debug < 0)
@@ -199,12 +199,12 @@ int eDVBAudio::startPid(int pid, int type)
 			::ioctl(m_fd, AUDIO_PLAY);
 
 	}
-//#ifdef DREAMNEXTGEN
-//	if (m_fd_demux >= 0)
-//	{
-//		m_TsPaser->startPid(m_fd_demux);
-//	}
-//#endif
+#ifdef DREAMNEXTGEN
+	if (m_fd_demux >= 0)
+	{	
+		m_TsPaser->startPid(m_fd_demux);
+	}
+#endif
 	return 0;
 }
 
@@ -237,9 +237,9 @@ void eDVBAudio::stop()
 		else
 			::ioctl(m_fd_demux, DMX_STOP);
 
-//#ifdef DREAMNEXTGEN
-//		m_TsPaser->stop();
-//#endif
+#ifdef DREAMNEXTGEN
+		m_TsPaser->stop();
+#endif
 	}
 }
 
@@ -259,12 +259,12 @@ void eDVBAudio::flush()
 			::ioctl(m_fd, AUDIO_CLEAR_BUFFER);
 
 	}
-//#ifdef DREAMNEXTGEN
-//	if (m_fd_demux >= 0)
-//	{
-//		m_TsPaser->flush();
-//	}
-//#endif
+#ifdef DREAMNEXTGEN
+	if (m_fd_demux >= 0)
+	{	
+		m_TsPaser->flush();
+	}
+#endif
 }
 
 void eDVBAudio::freeze()
@@ -282,12 +282,12 @@ void eDVBAudio::freeze()
 		else
 			::ioctl(m_fd, AUDIO_PAUSE);
 	}
-//#ifdef DREAMNEXTGEN
-//	if (m_fd_demux >= 0)
-//	{
-//		m_TsPaser->freeze();
-//	}
-//#endif
+#ifdef DREAMNEXTGEN
+	if (m_fd_demux >= 0)
+	{	
+		m_TsPaser->freeze();
+	}
+#endif
 }
 
 void eDVBAudio::unfreeze()
@@ -305,12 +305,12 @@ void eDVBAudio::unfreeze()
 		else
 			::ioctl(m_fd, AUDIO_CONTINUE);
 	}
-//#ifdef DREAMNEXTGEN
-//	if (m_fd_demux >= 0)
-//	{
-//		m_TsPaser->unfreeze();
-//	}
-//#endif
+#ifdef DREAMNEXTGEN
+	if (m_fd_demux >= 0)
+	{	
+		m_TsPaser->unfreeze();
+	}
+#endif
 }
 
 void eDVBAudio::setChannel(int channel)
@@ -345,23 +345,23 @@ int eDVBAudio::getPTS(pts_t &now)
 		if (::ioctl(m_fd, AUDIO_GET_PTS, &now) < 0)
 			eDebug("[eDVBAudio%d] AUDIO_GET_PTS failed: %m", m_dev);
 	}
-//#ifdef DREAMNEXTGEN
-//	if (m_fd_demux >= 0)
-//	{
-//		m_TsPaser->getPTS(now);
-//	}
-//#endif
+#ifdef DREAMNEXTGEN
+	if (m_fd_demux >= 0)
+	{	
+		m_TsPaser->getPTS(now);
+	}
+#endif
 	return 0;
 }
 
 eDVBAudio::~eDVBAudio()
 {
 	unfreeze();  // why unfreeze here... but not unfreeze video in ~eDVBVideo ?!?
-//#ifdef DREAMNEXTGEN
-//	if(m_TsPaser)
-//		delete m_TsPaser;
-//	m_TsPaser = 0;
-//#endif
+#ifdef DREAMNEXTGEN
+	if(m_TsPaser)
+		delete m_TsPaser;
+	m_TsPaser = 0;
+#endif
 	if (m_fd >= 0)
 		::close(m_fd);
 	if (m_fd_demux >= 0)
