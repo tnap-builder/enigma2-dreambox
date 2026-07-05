@@ -97,6 +97,9 @@ dvbinclude_HEADERS = \
 	dvb/eramtimeshift.h
 
 if DREAMNEXTGEN
+dvb_libenigma_dvb_a_SOURCES += \
+	dvb/tsparser.cpp
+
 dvbinclude_HEADERS += \
 	dvb/alsa.h \
 	dvb/decoders.h \
