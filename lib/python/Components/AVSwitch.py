@@ -645,7 +645,7 @@ def InitAVSwitch():
 		if model not in ("dreamone", "dreamtwo"):
 			config.av.transcodeac3plus.addNotifier(setAC3plusTranscode)
 
-	AC4 = MACHINEBUILD in ("dreamone", "dreamtwo")
+	AC4 = model in ("dreamone", "dreamtwo")
 	BoxInfo.setItem("CanAC4", AC4)
 	if AC4:
 		config.av.ac4 = ConfigSelection(default="hdmi_best", choices=[
